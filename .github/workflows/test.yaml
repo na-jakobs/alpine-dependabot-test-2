@@ -1,0 +1,42 @@
+---
+name: Test
+on: push
+
+env:
+  PROJECT: alpine-bash-curl-jq-yq
+  ALPINE_VERSION: 3.16.1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Build local container for scanning
+        uses: docker/build-push-action@v3
+        with:
+          tags: localbuild/testimage:latest
+          push: false
+          load: true
+      - name: Scan image
+        run: |
+          docker run --rm \
+            --volume /var/run/docker.sock:/var/run/docker.sock \
+            --name Grype anchore/grype:latest \
+            localbuild/testimage:latest \
+            --output sarif --fail-on medium --add-cpes-if-none --distro alpine:3.16.1 | tee ./results.sarif
+      - name: Remove test image
+        run: docker image rm localbuild/testimage --force
+      - name: Upload scan report
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: ./results.sarif
+      - name: Buildx
+        run: |
+          docker buildx build . -f Dockerfile \
+            --tag alpine-bash-curl-jq-yq:local \
+            --output=type=docker \
+            --progress plain \
+            --build-arg ALPINE_VERSION=${{ env.ALPINE_VERSION }}
