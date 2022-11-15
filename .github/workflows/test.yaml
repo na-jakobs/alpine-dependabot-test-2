@@ -1,6 +1,16 @@
 ---
 name: Test
-on: push
+on:
+  push:
+    branches:    
+      - '*'         # matches every branch that doesn't contain a '/'
+      - '*/*'       # matches every branch containing a single '/'
+      - '**'        # matches every branch
+      - '!master'   # excludes master
+      - 'dependabot/*'
+  pull_request:
+    branches:
+      - 'dependabot/*'    
 
 env:
   PROJECT: alpine-bash-curl-jq-yq
